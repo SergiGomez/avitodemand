@@ -1,0 +1,3 @@
+# data files such as CSV or zip
+*.csv
+*.zip
