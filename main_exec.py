@@ -13,7 +13,7 @@ import os
 import gc
 import time
 import random
-import importlib 
+import importlib
 
 # Sk-learn packages
 import sklearn as sk
@@ -27,6 +27,7 @@ import xgboost as xgb
 
 # Import our own functions
 import kaggle_preprocessing as prep_funs
+import models 
 #importlib.reload(prep_funs)
 
 time_ini_exec = time.time()
@@ -75,7 +76,7 @@ elif val_set_type == 'random_subset':
     df.loc[df['item_id'].isin(id_val), 'set'] = 'val'
     del val_df
 
-del train 
+del train
 del test
 gc.collect()
 
@@ -102,30 +103,30 @@ if del_activation_date == True:
     del df['activation_date']
 
 #Categorical Variables
-    
-# I WILL CONSIDER USER_ID AS A CATEGORICAL VARIABLE FOR THE TIME BEING !! 
+
+# I WILL CONSIDER USER_ID AS A CATEGORICAL VARIABLE FOR THE TIME BEING !!
 # because user_id cannot be mapped to a numerical variable
 
-cat_vars = ["region", "city", "parent_category_name", 
+cat_vars = ["region", "city", "parent_category_name",
             "category_name", "user_type", "param_1",
             "param_2", "param_3","user_id"]
 
 if cat_vars_transf == 'map_to_num':
-    for col in cat_vars: 
+    for col in cat_vars:
         #print("col name is: ",col)
         lbl = preprocessing.LabelEncoder()
         lbl.fit(list(df[col].values.astype('str')))
         df[col] = lbl.transform(list(df[col].values.astype('str')))
 if cat_vars_transf == 'hash':
-    for col in cat_vars: 
+    for col in cat_vars:
         df[col] = df.apply(lambda row: prep_funs.hash_column(row, col),axis=1)
-        
+
 # Text Variables
   #Title
     #Length of the Title
 df['title'] = df['title'].fillna(" ")
 df['title_len'] = df['title'].apply(lambda x : len(x.split()))
- # Description 
+ # Description
    # Length of the Description
 df['description'] = df['description'].fillna(" ")
 df['description_len'] = df['description'].apply(lambda x : len(x.split()))
@@ -133,7 +134,7 @@ df['description_len'] = df['description'].apply(lambda x : len(x.split()))
 
 # Image Variables
    #Image
-# for the beginning I use only the information if there is an image or not 
+# for the beginning I use only the information if there is an image or not
 df['no_image'] = df['image'].isnull().astype(int)
    #Image_top1
 
@@ -145,7 +146,7 @@ df_Model = df.drop(cols_to_drop, axis=1)
 train_Model = df_Model.loc[df_Model['set'] == 'train']
 val_Model = df_Model.loc[df_Model['set'] == 'val']
 test_Model = df_Model.loc[df_Model['set'] == 'test']
-# I remove the deal_prob of the test ! 
+# I remove the deal_prob of the test !
 del test_Model['deal_probability']
 
 print("shape of train: ",train_Model.shape)
@@ -163,7 +164,29 @@ del train_X['deal_probability']
 del val_X['deal_probability']
 train_Y = train_Model['deal_probability'].values
 val_Y = val_Model['deal_probability'].values
-    
+test_X = test_Model.copy()
+
+###
+
+target_var = 'deal_probability'
+#IDcol = 'ID'
+
+dataset = {'train': train_Model,
+           'val': val_Model,
+           'test': test_Model}
+
+params =  {'objective': 'reg:linear',
+           'n_estimators': 400,
+           'learning_rate': 0.05,
+           'gamma': 0,
+           'subsample': 0.75,
+           'colsample_bytree': 1,
+           'max_depth': 7,
+           'n_jobs': -1,
+           'silent': False}
+
+###
+
 #Modelling Stage
   # Features of our model
 
@@ -171,7 +194,7 @@ val_Y = val_Model['deal_probability'].values
 
 time_modelstart = time.time()
 
-if model_name == 'rf': 
+if model_name == 'rf':
     print("Simple Random Forest")
     # Instantiate model with 1000 decision trees and max_depth = 5
     rf = RandomForestRegressor(n_estimators = 100, max_depth = 5,
@@ -201,14 +224,14 @@ elif model_name == 'lgb':
         'learning_rate': 0.02,
         'verbose': 1
         }
-    # LGBM Dataset Formatting 
+    # LGBM Dataset Formatting
     lgtrain = lgb.Dataset(train_X, train_Y,
                 feature_name=tfvocab,
                 categorical_feature = categorical)
     lgval = lgb.Dataset(val_X, val_Y,
                 feature_name=tfvocab,
                 categorical_feature = categorical)
-    
+
     lgb_clf = lgb.train(
             lgbm_params,
             lgtrain,
@@ -219,37 +242,17 @@ elif model_name == 'lgb':
             verbose_eval=100
             )
     print('RMSE:', np.sqrt(metrics.mean_squared_error(val_Y, lgb_clf.predict(val_X))))
+
 elif model_name == 'xgb':
     
-   
-    train_X = train_X.as_matrix(columns=['category_name','city','item_seq_number',
-                                         'param_1','param_2','param_3',
-                                         'parent_category_name','region','user_id',
-                                         'user_type','price_log','weekday','month',
-                                         'day','week','title_len','description_len','no_image'])
-    val_X = val_X.as_matrix(columns=['category_name','city','item_seq_number',
-                                         'param_1','param_2','param_3',
-                                         'parent_category_name','region','user_id',
-                                         'user_type','price_log','weekday','month',
-                                         'day','week','title_len','description_len','no_image'])
-    test_X = test_Model.as_matrix(columns=['category_name','city','item_seq_number',
-                                         'param_1','param_2','param_3',
-                                         'parent_category_name','region','user_id',
-                                         'user_type','price_log','weekday','month',
-                                         'day','week','title_len','description_len','no_image'])
- 
-    model = xgb.XGBRegressor(n_estimators=400, learning_rate=0.05, gamma=0, 
-                             subsample=0.75, colsample_bytree=1, max_depth=7,
-                             n_jobs = -1)
-    model.fit(train_X, train_Y)
-    pred_val = model.predict(val_X)
+    model_trained = models.create_model(dataset, model_name, target_var, params)
+    pred_val = model_trained.predict(dataset['val'])
     print("number of observations with pred_val < 0: ",len(np.where(pred_val < 0)[0]))
     print("number of observations with pred_val > 1: ",len(np.where(pred_val > 1)[0]))
     rmse = np.sqrt(sk.metrics.mean_squared_error(val_Y, pred_val))
     print("The RMSE of the Val is: ", rmse)
     # Prediction of the Test set
-    test_pred = rf.predict(test_Model)
-
+    test_pred = model_trained.predict(test_X)
 
 print("Model Runtime: %0.2f Minutes"%((time.time() - time_modelstart)/60))
 
