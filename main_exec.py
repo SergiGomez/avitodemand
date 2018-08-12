@@ -27,7 +27,7 @@ import xgboost as xgb
 
 # Import our own functions
 import kaggle_preprocessing as prep_funs
-import models 
+import models
 #importlib.reload(prep_funs)
 
 time_ini_exec = time.time()
@@ -70,7 +70,7 @@ if val_set_type == 'time_stamp':
     cond_val_2 = df['set'] != 'test'
     df.loc[cond_val_1 & cond_val_2,'set'] = 'val'
 elif val_set_type == 'random_subset':
-    val_df = df.loc[df['set'] == 'train'].sample(frac=0.2)
+    val_df = df.loc[df['set'] == 'train'].sample(frac=0.1)
     val_df['set'] = 'val'
     id_val = val_df['item_id'].values
     df.loc[df['item_id'].isin(id_val), 'set'] = 'val'
@@ -131,7 +131,6 @@ df['title_len'] = df['title'].apply(lambda x : len(x.split()))
 df['description'] = df['description'].fillna(" ")
 df['description_len'] = df['description'].apply(lambda x : len(x.split()))
 
-
 # Image Variables
    #Image
 # for the beginning I use only the information if there is an image or not
@@ -176,7 +175,7 @@ dataset = {'train': train_Model,
            'test': test_Model}
 
 params =  {'objective': 'reg:linear',
-           'n_estimators': 400,
+           'n_estimators': 1,
            'learning_rate': 0.05,
            'gamma': 0,
            'subsample': 0.75,
@@ -244,9 +243,9 @@ elif model_name == 'lgb':
     print('RMSE:', np.sqrt(metrics.mean_squared_error(val_Y, lgb_clf.predict(val_X))))
 
 elif model_name == 'xgb':
-    
+
     model_trained = models.create_model(dataset, model_name, target_var, params)
-    pred_val = model_trained.predict(dataset['val'])
+    pred_val = model_trained.predict(val_X)
     print("number of observations with pred_val < 0: ",len(np.where(pred_val < 0)[0]))
     print("number of observations with pred_val > 1: ",len(np.where(pred_val > 1)[0]))
     rmse = np.sqrt(sk.metrics.mean_squared_error(val_Y, pred_val))
