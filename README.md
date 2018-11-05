@@ -1,6 +1,6 @@
 # Kaggle - Avito Demand Prediction Challenge
 
-Link to the website: https://www.kaggle.com/c/avito-demand-prediction/
+Link to the Kaggle challenge: https://www.kaggle.com/c/avito-demand-prediction/
 
 When selling used goods online, a combination of tiny, nuanced details in a product description can make a big difference in drumming up interest. 
 
