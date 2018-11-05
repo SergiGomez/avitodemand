@@ -29,6 +29,7 @@ def fit_xgb_model(model, train, predictors_names, target_var, useTrainCV = 'None
                           early_stopping_rounds = early_stopping_rounds,
                           show_progress = True)
         model.set_params(n_estimators=cvresult.shape[0])
+
     elif useTrainCV == "cv_sk":
         X = train[predictors_names]
         y = train[target_var]
@@ -40,6 +41,7 @@ def fit_xgb_model(model, train, predictors_names, target_var, useTrainCV = 'None
             model = xgb.XGBRegressor()
             model.set_params(**params)
             model.fit(train[predictors_names], train[target_var], eval_metric='rmse')
+
     #Fit the algorithm on the data
     model.fit(train[predictors_names], train[target_var], eval_metric='rmse')
 
@@ -56,11 +58,11 @@ def create_model(dataset, model_name, target_var, params):
         model = xgb.XGBRegressor()
         model.set_params(**params)
         train = dataset['train']
-        model_trained = fit_xgb_model(model,
-                                      train,
-                                      predictors_names,
-                                      target_var,
-                                      useTrainCV = False,
+        model_trained = fit_xgb_model(model = model,
+                                      train = train,
+                                      predictors_names = predictors_names,
+                                      target_var = target_var,
+                                      useTrainCV = True,
                                       cv_folds = 5,
                                       early_stopping_rounds = 50)
     return model_trained
